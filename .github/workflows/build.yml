@@ -19,7 +19,7 @@ jobs:
       matrix:
         include:
           - name: macOS-arm64
-            os: macos-14
+            os: macos-15
             cmake_args: -G Ninja -DCMAKE_OSX_ARCHITECTURES=arm64
           - name: Windows-x64
             os: windows-2022
@@ -29,7 +29,7 @@ jobs:
             cmake_args: -G Ninja
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Abhaengigkeiten (Linux)
         if: runner.os == 'Linux'
@@ -81,7 +81,7 @@ jobs:
             zip -r -q "$P.zip" "$P"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: RytmFilter-${{ matrix.name }}
           path: RytmFilter-${{ matrix.name }}.zip
@@ -94,7 +94,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true

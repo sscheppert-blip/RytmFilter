@@ -1,0 +1,15 @@
+# Build-Ausgaben
+build/
+build-*/
+cmake-build-*/
+out/
+
+# Herstelleranleitung (urheberrechtlich geschuetzt, nicht weitergeben)
+*.pdf
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+.claude/

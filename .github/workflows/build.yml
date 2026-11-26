@@ -1,0 +1,108 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS-arm64
+            os: macos-14
+            cmake_args: -G Ninja -DCMAKE_OSX_ARCHITECTURES=arm64
+          - name: Windows-x64
+            os: windows-2022
+            cmake_args: -G "Visual Studio 17 2022" -A x64
+          - name: Linux-x64
+            os: ubuntu-22.04
+            cmake_args: -G Ninja
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Abhaengigkeiten (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libasound2-dev libjack-jackd2-dev \
+            libfreetype6-dev libfontconfig1-dev libx11-dev libxcomposite-dev libxcursor-dev \
+            libxext-dev libxinerama-dev libxrandr-dev libxrender-dev libglu1-mesa-dev mesa-common-dev
+
+      - name: Abhaengigkeiten (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja || true
+
+      - name: Konfigurieren
+        shell: bash
+        run: cmake -S . -B build ${{ matrix.cmake_args }} -DCMAKE_BUILD_TYPE=Release -DRYTMFILTER_COPY_AFTER_BUILD=OFF
+
+      - name: Bauen
+        shell: bash
+        run: cmake --build build --config Release --parallel
+
+      - name: DSP-Tests
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ./build/FilterTest_artefacts/Release/FilterTest.exe
+          else
+            ./build/FilterTest_artefacts/Release/FilterTest
+          fi
+
+      - name: Paket schnueren
+        shell: bash
+        run: |
+          A=build/RytmFilter_artefacts/Release
+          P=RytmFilter-${{ matrix.name }}
+          mkdir -p "$P"
+          cp -R "$A/VST3/RytmFilter.vst3" "$P/"
+          cp -R "$A/CLAP/RytmFilter.clap" "$P/"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            cp -R "$A/AU/RytmFilter.component" "$P/"
+            for b in "$P"/*; do codesign --force --deep --sign - "$b"; done
+          fi
+          cp ANLEITUNG.md LICENSE "$P/"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            7z a "$P.zip" "$P" > /dev/null
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            ditto -c -k --keepParent "$P" "$P.zip"
+          else
+            zip -r -q "$P.zip" "$P"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RytmFilter-${{ matrix.name }}
+          path: RytmFilter-${{ matrix.name }}.zip
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: GitHub-Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" dist/*.zip \
+            --repo "${{ github.repository }}" \
+            --title "RytmFilter ${{ github.ref_name }}" \
+            --notes "Downloads fuer macOS (Apple Silicon), Windows 10/11 (x64) und Linux (x64). Installation: siehe ANLEITUNG.md im Paket."

@@ -31,10 +31,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout RytmFilterProcessor::createP
     using namespace juce;
     AudioProcessorValueTreeState::ParameterLayout layout;
 
+    // Wie am Original: nur ganzzahlige Stufen (0..127 bzw. -64..+63), keine Zwischenwerte.
+    auto steps = [] (float lo, float hi) { return NormalisableRange<float> (lo, hi, 1.0f); };
     auto intText = [] (float v, int) { return String (roundToInt (v)); };
     auto add127 = [&] (const char* id, const char* name, float def)
     {
-        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id, 1 }, name, NormalisableRange<float> (0.0f, 127.0f), def,
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id, 1 }, name, steps (0.0f, 127.0f), def,
                                                            AudioParameterFloatAttributes().withStringFromValueFunction (intText)));
     };
 
@@ -43,7 +45,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout RytmFilterProcessor::createP
     add127 (Params::sus, "Filter Sustain", 0.0f);
     add127 (Params::rel, "Filter Release", 64.0f);
 
-    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { Params::frq, 1 }, "Filter Frequency", NormalisableRange<float> (0.0f, 127.0f), 127.0f,
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { Params::frq, 1 }, "Filter Frequency", steps (0.0f, 127.0f), 127.0f,
                     AudioParameterFloatAttributes()
                         .withStringFromValueFunction ([] (float v, int) { return String (roundToInt (v)) + " (" + String (Params::frqToHz ((float) roundToInt (v)), 0) + " Hz)"; })));
 
@@ -54,7 +56,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout RytmFilterProcessor::createP
         types.add (Params::typeLong (t));
     layout.add (std::make_unique<AudioParameterChoice> (ParameterID { Params::typ, 1 }, "Filter Type", types, Params::LP2));
 
-    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { Params::env, 1 }, "Filter Env Depth", NormalisableRange<float> (-64.0f, 63.0f), 0.0f,
+    layout.add (std::make_unique<AudioParameterFloat> (ParameterID { Params::env, 1 }, "Filter Env Depth", steps (-64.0f, 63.0f), 0.0f,
                                                        AudioParameterFloatAttributes().withStringFromValueFunction (intText)));
 
     layout.add (std::make_unique<AudioParameterChoice> (ParameterID { Params::trigMode, 1 }, "Trig Mode",
@@ -94,8 +96,7 @@ void RytmFilterProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     envelope.sampleRate = sampleRate;
     envelope.reset();
-    detector.sampleRate = sampleRate;
-    detector.reset();
+    detector.prepare (sampleRate);
 
     frqSmoothed.reset (sampleRate, 0.02);
     resSmoothed.reset (sampleRate, 0.02);
@@ -255,7 +256,9 @@ juce::AudioProcessorEditor* RytmFilterProcessor::createEditor()
 
 void RytmFilterProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto xml = apvts.copyState().createXml())
+    auto state = apvts.copyState();
+    state.setProperty ("frqCurve", frqCurveVersion, nullptr);
+    if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
 }
 
@@ -263,7 +266,22 @@ void RytmFilterProcessor::setStateInformation (const void* data, int sizeInBytes
 {
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
         if (xml->hasTagName (apvts.state.getType()))
-            apvts.replaceState (juce::ValueTree::fromXml (*xml));
+        {
+            auto state = juce::ValueTree::fromXml (*xml);
+
+            // Projekte aus v1.0 nutzten eine andere FRQ-Kennlinie (20 Hz .. 20 kHz):
+            // auf den Halbton umrechnen, der derselben Frequenz am naechsten liegt.
+            if ((int) state.getProperty ("frqCurve", 1) < frqCurveVersion)
+                for (auto child : state)
+                    if (child.getProperty ("id").toString() == Params::frq)
+                    {
+                        const double hz = Params::legacyFrqToHz ((double) child.getProperty ("value", 127.0));
+                        child.setProperty ("value", std::round (Params::hzToFrq (hz)), nullptr);
+                    }
+
+            state.removeProperty ("frqCurve", nullptr);
+            apvts.replaceState (state);
+        }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

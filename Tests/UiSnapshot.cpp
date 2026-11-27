@@ -10,7 +10,7 @@ int main (int argc, char** argv)
     const juce::File out = argc > 1 ? juce::File (juce::String (argv[1]))
                                     : juce::File::getCurrentWorkingDirectory().getChildFile ("snapshot.png");
     const double scale = argc > 2 ? juce::String (argv[2]).getDoubleValue() : 1.0;
-    const bool trigPage = argc > 3 && juce::String (argv[3]) == "trig";
+    const juce::String page = argc > 3 ? juce::String (argv[3]) : juce::String ("fltr");
     const int type = argc > 4 ? juce::String (argv[4]).getIntValue() : 0;
 
     RytmFilterProcessor proc;
@@ -30,8 +30,10 @@ int main (int argc, char** argv)
     std::unique_ptr<juce::AudioProcessorEditor> editor (proc.createEditor());
     editor->setSize (juce::roundToInt (editor->getWidth() * scale), juce::roundToInt (editor->getHeight() * scale));
 
-    if (trigPage)
-        if (auto* key = dynamic_cast<juce::Button*> (editor->getChildComponent (0)->getChildComponent (10)))
+    // Kinder des Panels: 0 = Display, 1..8 = Encoder, 9 = FLTR, 10 = TRIG
+    const int keyIndex = page == "trig" ? 10 : -1;
+    if (keyIndex > 0)
+        if (auto* key = dynamic_cast<juce::Button*> (editor->getChildComponent (0)->getChildComponent (keyIndex)))
             key->triggerClick();
 
     juce::AudioBuffer<float> buffer (2, block);

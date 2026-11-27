@@ -11,13 +11,14 @@ RytmFilter ist ein Audio-Effekt für deine Musiksoftware (DAW). Er formt den Kla
 klassischen Drumcomputers: Höhen wegnehmen, Bässe ausdünnen, eine Frequenz herausheben oder aushöhlen – und
 das Ganze per Hüllkurve rhythmisch „atmen“ lassen.
 
-Die Idee: Der schnelle Workflow einer Hardware-Kiste, aber direkt im Rechner. Acht Regler, ein Display,
-alle Werte von 0 bis 127 – kein Menü-Labyrinth.
+Die Idee: Der schnelle Workflow einer Hardware-Kiste, aber direkt im Rechner. Acht Endlos-Regler, ein Display,
+alle Werte in ganzen Schritten von 0 bis 127 – kein Menü-Labyrinth.
 
 ## Was kann es?
 
 - **7 Filtertypen** – Tiefpass (zwei Varianten), Bandpass, Hochpass (zwei Varianten), Kerbfilter und Glocke
-- **Resonanz** – vom sanften Abrunden bis zum pfeifenden Zwitschern
+- **Resonanz** – vom sanften Abrunden bis zur Selbstoszillation: ab RES 96 pfeift der Filter von selbst
+- **Frequenz in Halbtönen** – wie am Original: FRQ 60 = 440 Hz, 12 Schritte = eine Oktave
 - **Hüllkurve** – lässt den Filter auf- und zugehen, ausgelöst durch MIDI-Noten, durch Schläge im Audiosignal
   oder automatisch im Songtempo
 - **Live-Frequenzanzeige** – oben im Display steht, wo der Filter gerade greift (z. B. `F:2.14KHZ`),
@@ -29,11 +30,21 @@ alle Werte von 0 bis 127 – kein Menü-Labyrinth.
 
 ## Wo läuft es?
 
-| System | Formate |
-|---|---|
-| macOS (Apple Silicon, ab macOS 11) | VST3 · AU · CLAP |
-| Windows 10 / 11 (64 Bit) | VST3 · CLAP |
-| Linux (64 Bit) | VST3 · CLAP |
+| System | Formate | Paket |
+|---|---|---|
+| macOS 11 oder neuer, Apple Silicon (M1 …) | VST3 · AU · CLAP | `RytmFilter-macOS-arm64.zip` |
+| Windows 10 / 11, 64 Bit (x64) | VST3 · CLAP | `RytmFilter-Windows-x64.zip` |
+| Linux 64 Bit (amd64), z. B. Ubuntu 22.04 oder neuer | VST3 · CLAP | `RytmFilter-Linux-x64.zip` |
+
+Unter Windows wird keine zusätzliche Laufzeit (Visual-C++-Redistributable) benötigt.
+
+## Neu in Version 1.1
+
+- Alle Regler in 128 ganzen Schritten wie am Gerät – auch bei Automation in der DAW
+- FRQ in Halbtönen (FRQ 60 = 440 Hz), Projekte aus 1.0 werden beim Laden automatisch umgerechnet
+- Echte Selbstoszillation ab RES 96 – der Filter wird zum stimmbaren Sinus-Oszillator
+- Transienten-Erkennung (TRNS) zuverlässiger, auch bei schnellen 16teln und 32teln
+- Schlankere Endlos-Encoder ohne Markierung, korrigierte TRIG-IN-LED
 
 ## Herunterladen & loslegen
 

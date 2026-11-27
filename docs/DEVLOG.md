@@ -100,9 +100,38 @@ Zusätzlich: pluginval (Strenge 7) und `auval` ohne Fehler.
 
 ---
 
+## Version 1.1 – Näher am Original
+
+Recherche-Material (Handbuch, Notizen, ein SysEx-File) lokal gesammelt. Das SysEx-File stellte sich als
+**Firmware-Update** heraus, nicht als Sound-Dump – und weil der Filter im Original analog ist, steckt sein Klang
+ohnehin nicht in der Firmware. Aus fremder Firmware Daten zu übernehmen, kam für ein AGPL-Projekt auch rechtlich
+nicht infrage. Recherche-Ordner `resources/` ist per `.gitignore` ausgeschlossen.
+
+| Änderung | Umsetzung |
+|---|---|
+| Nur 128 Stufen | Alle Parameter mit Schrittweite 1 (`NormalisableRange` mit Intervall) – auch für Host-Automation. Filter-Modulation bleibt intern stufenlos |
+| Encoder | Schlanke, glatte Endlos-Encoder ohne Positionsmarke – der Wert steht im Display |
+| FRQ in Halbtönen | `f = 440 · 2^((FRQ − 60) / 12)` → 13,75 Hz … 21,1 kHz (Annahme aus der Recherche, nicht am Gerät gemessen) |
+| Alte Projekte | v1.0-Zustände tragen kein `frqCurve`-Attribut → FRQ wird beim Laden auf den nächstgelegenen Halbton derselben Frequenz umgerechnet (max. ½ Halbton Abweichung) |
+| Selbstoszillation | Dämpfung `k` sinkt ab RES 88 linear weiter und wird ab RES 96 negativ. Pegelabhängige Zusatzdämpfung `k + limit · (bp² + lp²)` (Van-der-Pol-artig) hält die Schwingung als sauberen Sinus bei ca. −6 dBFS. Winziges Rauschen (−100 dBFS) stößt sie ohne Eingangssignal an |
+| TRIG-IN-LED | Wurde beim Blinken an der falschen Stelle neu gezeichnet → Repaint-Bereich korrigiert |
+| Transienten-Erkennung verschluckte Schläge | Alter Detektor verglich eine schnelle mit einer langsamen Hüllkurve (150 ms Abfall). Bei 16teln hing die langsame noch vom vorigen Schlag oben → bei einem Muster wie 0-1-1-1 kam nur der erste Schlag durch. Neu: Pegelsprung gegenüber dem Pegel von vor 5 ms, Hörsignal mit Höhenanhebung ab 150 Hz (Bass verdeckt weniger), Wiederscharfschaltung erst nach abgeklungenem Sprung, frühestens alle 25 ms. Getestet bis 16tel @174 BPM und 32tel @150 BPM, über Dauer-Basston, ohne Doppel-Trigger bei langen 45-Hz-Kicks |
+
+Kurz ausprobiert und wieder verworfen: eine AMP-Seite mit Overdrive und Lautstärke wie am Gerät sowie Tooltips.
+RytmFilter bleibt bewusst **nur ein Filter** mit schlanker Oberfläche.
+
+**MIDI-Trigger hinter einem Instrument:** Steht RytmFilter auf derselben Spur hinter einem Instrument, verbraucht
+das Instrument die MIDI-Noten – beim Plugin kommen keine an. Das ist DAW-Routing, kein Plugin-Fehler: Die Noten
+müssen von einer eigenen MIDI-Spur an RytmFilter geschickt werden (siehe Anleitung) oder TRNS/SYNC nutzen.
+
+Tests ergänzt: Halbton-Kennlinie, Umrechnung alter Projekte, Einsatzpunkt/Pegel/Tonhöhe der Selbstoszillation,
+Transienten bei schnellen Tempi, Oversampling-Latenz (< 5 Samples). pluginval (Strenge 7) ohne Fehler.
+
+---
+
 ## Ideen für später
 
-- Overdrive-Seite (OVR) und LFO
+- LFO
 - Kennlinien von FRQ/RES/Hüllkurve am echten Gerät nachmessen und angleichen
 - Signierte/notarisierte macOS-Builds
 - Presets

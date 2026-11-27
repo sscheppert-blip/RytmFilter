@@ -55,9 +55,13 @@ namespace Params
         return q[std::clamp (r, 0, numRates - 1)];
     }
 
-    // FRQ 0..127 -> 20 Hz .. 20 kHz exponentiell (eine Stufe ~ 0,94 Halbtoene)
-    inline double frqToHz (double v)  { return 20.0 * std::pow (1000.0, std::clamp (v, 0.0, 127.0) / 127.0); }
-    inline double hzToFrq (double hz) { return 127.0 * std::log10 (std::max (hz, 20.0) / 20.0) / 3.0; }
+    // FRQ 0..127 in Halbtonschritten, FRQ 60 = 440 Hz (A4) -> 13,75 Hz .. 21,1 kHz.
+    // Eine Stufe = ein Halbton, damit laesst sich der Filter auf Noten stimmen.
+    inline double frqToHz (double v)  { return 440.0 * std::pow (2.0, (std::clamp (v, 0.0, 127.0) - 60.0) / 12.0); }
+    inline double hzToFrq (double hz) { return std::clamp (60.0 + 12.0 * std::log2 (std::max (hz, 1.0) / 440.0), 0.0, 127.0); }
+
+    // Kennlinie aus Version 1.0 (20 Hz .. 20 kHz), nur zum Umrechnen alter Projekte
+    inline double legacyFrqToHz (double v) { return 20.0 * std::pow (1000.0, std::clamp (v, 0.0, 127.0) / 127.0); }
 
     // Huellkurvenzeiten 0..127 -> 0 .. 10 s (kubisch, feine Aufloesung bei kurzen Zeiten)
     inline double envTimeMs (double v)
@@ -69,6 +73,27 @@ namespace Params
     // TRIG LEN 0..127 -> Gate-Laenge 5 ms .. 2 s
     inline double gateLenMs (double v) { return 5.0 * std::pow (400.0, std::clamp (v, 0.0, 127.0) / 127.0); }
 
-    // RES 0..127 -> Guete Q 0.5 .. 30
-    inline double resToQ (double v) { return 0.5 * std::pow (60.0, std::clamp (v, 0.0, 127.0) / 127.0); }
+    // RES 0..127 -> Daempfung k des Filters (k = 1/Q).
+    //   0 .. 88 : Q 0,5 .. 20 exponentiell (normale Resonanz)
+    //  88 ..127 : k sinkt linear weiter und wird ab RES 96 negativ -> der Filter schwingt
+    //             von selbst (Selbstoszillation), die Amplitude begrenzt resLimit().
+    inline constexpr double resKnee = 88.0, resSelfOsc = 96.0;
+    inline double resToK (double v)
+    {
+        v = std::clamp (v, 0.0, 127.0);
+        if (v <= resKnee)
+            return 1.0 / (0.5 * std::pow (40.0, v / resKnee));
+        const double kKnee = 1.0 / 20.0;
+        return kKnee - kKnee * (v - resKnee) / (resSelfOsc - resKnee);
+    }
+    inline double resToQ (double v) { return 1.0 / std::max (resToK (v), 1.0e-3); }
+
+    // Pegelabhaengige Zusatzdaempfung (k_eff = k + limit * Energie). Erst ab RES 80 aktiv:
+    // bremst laute Resonanz analog-artig ein und haelt die Selbstoszillation bei ca. -6 dBFS.
+    inline double resLimit (double v)
+    {
+        const double t = std::clamp ((v - 80.0) / 47.0, 0.0, 1.0);
+        return 0.76 * t * t * (3.0 - 2.0 * t);
+    }
+
 }

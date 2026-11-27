@@ -7,6 +7,9 @@ out/
 # Herstelleranleitung (urheberrechtlich geschuetzt, nicht weitergeben)
 *.pdf
 
+# Lokales Recherche-Material (Handbuch, Firmware usw.) - nicht ins Repo
+resources/
+
 # Editor / OS
 .DS_Store
 .vscode/

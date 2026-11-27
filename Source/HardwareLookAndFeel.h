@@ -12,61 +12,65 @@ namespace Hw
     const juce::Colour ledWhite      { 0xfff2f2f2 };
 }
 
-// Mattschwarze Endlos-Encoder (Draufsicht): Riffelrand, flache Oberseite, weisser Strich.
+// Schlanke Endlos-Encoder (Draufsicht) im Stil der Elektron-Geraete: glatt, mattschwarz
+// gummiert, flache Kappe, KEINE Positionsmarke - ein Endlos-Encoder hat keinen Anschlag,
+// der Wert steht im Display.
 class HardwareLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
-    void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
-                           float startAngle, float endAngle, juce::Slider& slider) override
+    // Anteil des Komponenten-Rechtecks, den der Knopf einnimmt (schlanker als ein Poti-Knopf)
+    static constexpr float knobDiameter = 0.64f;
+
+    void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float /*sliderPos*/,
+                           float /*startAngle*/, float /*endAngle*/, juce::Slider& slider) override
     {
-        const auto area   = juce::Rectangle<float> ((float) x, (float) y, (float) width, (float) height);
-        const float r     = juce::jmin (area.getWidth(), area.getHeight()) * 0.5f - 4.0f;
-        const auto c      = area.getCentre();
-        const float angle = startAngle + sliderPos * (endAngle - startAngle);
-        const bool enabled = slider.isEnabled();
+        const auto area  = juce::Rectangle<float> ((float) x, (float) y, (float) width, (float) height);
+        const float r    = juce::jmin (area.getWidth(), area.getHeight()) * 0.5f * knobDiameter;
+        const auto c     = area.getCentre();
+        const bool active = slider.isEnabled();
+        auto circle = [&] (float radius, juce::Point<float> centre) { return juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (centre); };
 
-        // Schlagschatten
+        // Schlagschatten (Licht von oben links)
         {
-            juce::ColourGradient shadow (juce::Colours::black.withAlpha (0.65f), c.x, c.y + r * 0.15f,
-                                         juce::Colours::transparentBlack, c.x, c.y + r * 1.35f, true);
+            juce::ColourGradient shadow (juce::Colours::black.withAlpha (0.7f), c.x, c.y + r * 0.2f,
+                                         juce::Colours::transparentBlack, c.x, c.y + r * 1.6f, true);
             g.setGradientFill (shadow);
-            g.fillEllipse (juce::Rectangle<float> (r * 2.7f, r * 2.7f).withCentre (c.translated (0.0f, r * 0.12f)));
+            g.fillEllipse (circle (r * 1.5f, c.translated (r * 0.08f, r * 0.18f)));
         }
 
-        // Aussenring (Seite) mit Riffelung
-        g.setColour (juce::Colour (0xff0b0b0b));
-        g.fillEllipse (juce::Rectangle<float> (r * 2.0f, r * 2.0f).withCentre (c));
+        // Montagering im Gehaeuse
+        g.setColour (juce::Colour (0xff070707));
+        g.fillEllipse (circle (r * 1.08f, c));
 
-        const int ridges = 36;
-        for (int i = 0; i < ridges; ++i)
+        // Glatte Flanke: Zylinder von leicht schraeg oben -> oben links Licht, unten rechts Schatten
         {
-            const float a = angle + juce::MathConstants<float>::twoPi * (float) i / (float) ridges;
-            const auto p1 = c.getPointOnCircumference (r * 0.86f, a);
-            const auto p2 = c.getPointOnCircumference (r * 0.99f, a);
-            // Licht von oben links: Rippen oben heller
-            const float light = 0.5f + 0.5f * std::cos (a + 0.8f);
-            g.setColour (juce::Colour (0xff1a1a1a).interpolatedWith (juce::Colour (0xff3a3a3a), light * 0.6f));
-            g.drawLine ({ p1, p2 }, juce::jmax (1.0f, r * 0.045f));
+            juce::ColourGradient side (juce::Colour (0xff3a3a3b), c.x - r * 0.7f, c.y - r * 0.7f,
+                                       juce::Colour (0xff0a0a0a), c.x + r * 0.6f, c.y + r * 0.7f, false);
+            side.addColour (0.45, juce::Colour (0xff1c1c1d));
+            g.setGradientFill (side);
+            g.fillEllipse (circle (r, c));
         }
 
-        // Oberseite: matt, leichter Verlauf
-        const float top = r * 0.80f;
-        juce::ColourGradient face (juce::Colour (0xff2a2a2b), c.x - top * 0.6f, c.y - top * 0.8f,
-                                   juce::Colour (0xff121213), c.x + top * 0.5f, c.y + top, false);
+        // Kappe: flach, matt gummiert, minimal versetzt (Perspektive)
+        const float top = r * 0.84f;
+        const auto capC = c.translated (-r * 0.02f, -r * 0.03f);
+        const auto cap  = circle (top, capC);
+        juce::ColourGradient face (juce::Colour (active ? 0xff29292a : 0xff1e1e1f), capC.x - top * 0.7f, capC.y - top * 0.8f,
+                                   juce::Colour (0xff131314), capC.x + top * 0.6f, capC.y + top, false);
         g.setGradientFill (face);
-        g.fillEllipse (juce::Rectangle<float> (top * 2.0f, top * 2.0f).withCentre (c));
+        g.fillEllipse (cap);
 
-        // Kante der Oberseite
-        g.setColour (juce::Colour (0xff3c3c3d).withAlpha (0.9f));
-        g.drawEllipse (juce::Rectangle<float> (top * 2.0f, top * 2.0f).withCentre (c), juce::jmax (0.8f, r * 0.02f));
+        // Matter, breiter Glanz (Soft-Touch, kein Spiegeln)
+        juce::ColourGradient sheen (juce::Colours::white.withAlpha (active ? 0.055f : 0.025f), capC.x - top * 0.3f, capC.y - top * 0.4f,
+                                    juce::Colours::transparentWhite, capC.x - top * 0.3f + top * 1.1f, capC.y - top * 0.4f, true);
+        g.setGradientFill (sheen);
+        g.fillEllipse (cap);
 
-        // Weisser Markierungsstrich
-        juce::Path line;
-        line.startNewSubPath (c.getPointOnCircumference (top * 0.30f, angle));
-        line.lineTo (c.getPointOnCircumference (top * 0.88f, angle));
-        g.setColour (enabled ? juce::Colour (0xffededed) : juce::Colour (0xff4a4a4a));
-        g.strokePath (line, juce::PathStrokeType (juce::jmax (1.5f, r * 0.075f), juce::PathStrokeType::curved,
-                                                  juce::PathStrokeType::rounded));
+        // Abgerundete Kappenkante: oben links Lichtkante, unten rechts dunkel
+        juce::ColourGradient rim (juce::Colour (0xff4a4a4b), capC.x - top, capC.y - top,
+                                  juce::Colour (0xff0c0c0c), capC.x + top, capC.y + top, false);
+        g.setGradientFill (rim);
+        g.drawEllipse (cap, juce::jmax (0.7f, r * 0.03f));
     }
 };
 

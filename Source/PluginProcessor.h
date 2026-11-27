@@ -66,6 +66,9 @@ private:
         std::atomic<float>* mode; std::atomic<float>* rate; std::atomic<float>* sens; std::atomic<float>* len;
     } p {};
 
+    // Version der FRQ-Kennlinie im gespeicherten Zustand (1 = v1.0: 20 Hz..20 kHz, 2 = Halbtonschritte)
+    static constexpr int frqCurveVersion = 2;
+
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampling;
     std::array<dsp::MultimodeSvf, 2> filters;
     std::vector<dsp::SvfCoeffs> coeffs;

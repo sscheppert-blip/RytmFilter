@@ -4,6 +4,7 @@
 namespace
 {
     constexpr int knobSize = 92;
+    constexpr float trigLedX = 224.0f, trigLedY = 372.0f; // TRIG-IN-LED neben den Seitentasten
     constexpr int knobCols[4] = { 607, 717, 827, 937 };
     constexpr int knobRows[2] = { 128, 270 };
     const char* const knobLetters = "ABCDEFGH";
@@ -24,7 +25,7 @@ MainPanel::MainPanel (RytmFilterProcessor& p) : proc (p), display (p)
         auto& e = encoders[(size_t) i];
         e.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
         e.setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
-        e.setRotaryParameters (juce::degreesToRadians (-150.0f), juce::degreesToRadians (150.0f), true);
+        // Endlos-Encoder: keine Positionsanzeige am Knopf, der Wert steht im Display
         e.setMouseDragSensitivity (300);
         // Shift: Velocity-Modus fuer Feineinstellung
         e.setVelocityModeParameters (0.35, 1, 0.0, true, juce::ModifierKeys::shiftModifier);
@@ -103,7 +104,7 @@ void MainPanel::timerCallback()
     if (led != trigLed)
     {
         trigLed = led;
-        repaint (displayBezel.getRight() - 120, displayBezel.getBottom() + 10, 140, 70);
+        repaint ((int) trigLedX - 30, 330, 90, 60);
     }
 }
 
@@ -165,12 +166,12 @@ void MainPanel::paint (juce::Graphics& g)
     g.setColour (Hw::silkscreen);
     g.setFont (juce::FontOptions (14.0f, juce::Font::bold));
     for (int i = 0; i < 8; ++i)
-        g.drawText (juce::String::charToString (knobLetters[i]), knobCols[i % 4] - 20, knobRows[i / 4] + knobSize / 2 + 2, 40, 18,
+        g.drawText (juce::String::charToString (knobLetters[i]), knobCols[i % 4] - 20, knobRows[i / 4] + 38, 40, 18,
                     juce::Justification::centred);
 
     // TRIG-LED neben den Tasten
     {
-        const float lx = 224.0f, ly = 372.0f;
+        const float lx = trigLedX, ly = trigLedY;
         g.setColour (Hw::silkscreen);
         g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
         g.drawText ("TRIG IN", (int) lx - 20, 338, 60, 20, juce::Justification::centred);
